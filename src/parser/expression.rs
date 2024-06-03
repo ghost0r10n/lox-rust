@@ -1,8 +1,15 @@
 use crate::scanner::token::Token;
 
-use super::literal_value::LiteralValue;
+use super::{literal_value::LiteralValue, visitor::Visitor};
 
 pub enum Expression {
+    Unary {
+        operator: Token,
+        right: Box<Expression>,
+    },
+    Literal {
+        value: LiteralValue,
+    },
     Binary {
         left: Box<Expression>,
         operator: Token,
@@ -11,37 +18,19 @@ pub enum Expression {
     Grouping {
         expression: Box<Expression>,
     },
-    Literal {
-        value: LiteralValue,
-    },
-    Unary {
-        operator: Token,
-        right: Box<Expression>,
-    },
 }
 
 impl Expression {
-    fn new_binary(left: Expression, operator: Token, right: Expression) -> Expression {
-        Expression::Binary {
-            left: Box::new(left),
-            operator,
-            right: Box::new(right),
-        }
-    }
-    fn new_grouping(expression: Expression) -> Expression {
-        Expression::Grouping {
-            expression: Box::new(expression),
-        }
-    }
-    fn new_literal(literal_value: LiteralValue) -> Expression {
-        Expression::Literal {
-            value: literal_value,
-        }
-    }
-    fn new_unary(operator: Token, right: Expression) -> Expression {
-        Expression::Unary {
-            right: Box::new(right),
-            operator,
+    pub fn accept<R>(&self, visitor: &dyn Visitor<R>) -> R {
+        match self {
+            Expression::Unary { operator, right } => visitor.visit_unary_expr(operator, right),
+            Expression::Binary {
+                left,
+                operator,
+                right,
+            } => visitor.visit_binary_expr(left, operator, right),
+            Expression::Grouping { expression } => visitor.visit_grouping_expr(expression),
+            Expression::Literal { value } => visitor.visit_literal_expr(value),
         }
     }
 }

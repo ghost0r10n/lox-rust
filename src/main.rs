@@ -1,9 +1,13 @@
 use core::panic;
+use parser::expression::Expression;
+use parser::parser::ASTprinter;
 use scanner::scanner::Scanner;
 use scanner::token::Token;
+use scanner::token_type::TokenType;
 use std::fmt::Result;
 use std::fs::File;
 use std::io::{prelude::*, stdin};
+use std::ptr::null;
 use std::{env, io, usize};
 
 pub mod parser;
@@ -24,6 +28,26 @@ fn run(code: String) {
     for token in tokens {
         println!("{}", token);
     }
+}
+
+fn test_ast_tree() {
+    let expression: Expression = Expression::Binary {
+        left: Box::new(Expression::Unary {
+            operator: Token::new(TokenType::Minus, "-".to_string(), 0, Some("1".to_string())),
+            right: Box::new(Expression::Literal {
+                value: parser::literal_value::LiteralValue::Float(123.0),
+            }),
+        }),
+        operator: Token::new(TokenType::Star, "*".to_string(), 0, None),
+        right: Box::new(Expression::Grouping {
+            expression: Box::new(Expression::Literal {
+                value: parser::literal_value::LiteralValue::Float(45.67),
+            }),
+        }),
+    };
+    let ast_printer = ASTprinter::new();
+    let result = ast_printer.print_tree(expression);
+    println!("{}", result);
 }
 
 //From source mode
@@ -62,10 +86,13 @@ fn run_prompt() -> Result {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
+    let ast_test_key = &"ast";
     if args.len() > 2 {
         println!("Usage: lox [source]");
-    } else if args.len() == 2 {
+    } else if args.len() == 2 && args[1] != ast_test_key.to_string() {
         let _ = run_file(&args[1]);
+    } else if args.len() == 2 && args[1] == ast_test_key.to_string() {
+        test_ast_tree();
     } else {
         let _ = run_prompt();
     }
