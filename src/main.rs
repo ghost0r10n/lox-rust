@@ -7,8 +7,8 @@ use scanner::token_type::TokenType;
 use std::fmt::Result;
 use std::fs::File;
 use std::io::{prelude::*, stdin};
-use std::ptr::null;
 use std::{env, io, usize};
+use utils::literal_value::LiteralValue;
 
 pub mod parser;
 pub mod scanner;
@@ -36,13 +36,13 @@ fn test_ast_tree() {
         left: Box::new(Expression::Unary {
             operator: Token::new(TokenType::Minus, "-".to_string(), 0, Some("1".to_string())),
             right: Box::new(Expression::Literal {
-                value: parser::literal_value::LiteralValue::Float(123.0),
+                value: LiteralValue::Float(123.0),
             }),
         }),
         operator: Token::new(TokenType::Star, "*".to_string(), 0, None),
         right: Box::new(Expression::Grouping {
             expression: Box::new(Expression::Literal {
-                value: parser::literal_value::LiteralValue::Float(45.67),
+                value: LiteralValue::Float(45.67),
             }),
         }),
     };
