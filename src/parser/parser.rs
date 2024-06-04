@@ -1,4 +1,5 @@
-use super::{expression::Expression, literal_value::LiteralValue, visitor::Visitor};
+use super::{expression::Expression, visitor::Visitor};
+use crate::utils::literal_value::LiteralValue;
 
 pub struct ASTprinter {}
 
@@ -24,7 +25,7 @@ impl Visitor<String> for ASTprinter {
         self.parenthesize(operator.lexame.to_owned(), &[right])
     }
 
-    fn visit_literal_expr(&self, value: &super::literal_value::LiteralValue) -> String {
+    fn visit_literal_expr(&self, value: &LiteralValue) -> String {
         match value {
             LiteralValue::String(v) => return v.to_string(),
             LiteralValue::Float(v) => return v.to_string(),

@@ -1,4 +1,5 @@
-use super::{literal_value::LiteralValue, visitor::Visitor};
+use super::visitor::Visitor;
+use crate::utils::literal_value::LiteralValue;
 
 pub struct ExpressionVisitor;
 
@@ -25,7 +26,7 @@ impl Visitor<()> for ExpressionVisitor {
         right.accept(self);
     }
 
-    fn visit_literal_expr(&self, value: &super::literal_value::LiteralValue) {
+    fn visit_literal_expr(&self, value: &LiteralValue) {
         match value {
             LiteralValue::Float(_v) => println!("float literal"),
             LiteralValue::String(_v) => println!("string literal"),

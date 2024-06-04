@@ -1,6 +1,6 @@
+use super::visitor::Visitor;
 use crate::scanner::token::Token;
-
-use super::{literal_value::LiteralValue, visitor::Visitor};
+use crate::utils::literal_value::LiteralValue;
 
 pub enum Expression {
     Unary {

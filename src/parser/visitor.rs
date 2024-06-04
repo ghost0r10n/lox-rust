@@ -1,6 +1,6 @@
+use super::expression::Expression;
 use crate::scanner::token::Token;
-
-use super::{expression::Expression, literal_value::LiteralValue};
+use crate::utils::literal_value::LiteralValue;
 
 pub trait Visitor<R> {
     fn visit_binary_expr(&self, left: &Expression, operator: &Token, right: &Expression) -> R;

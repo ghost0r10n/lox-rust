@@ -12,6 +12,7 @@ use std::{env, io, usize};
 
 pub mod parser;
 pub mod scanner;
+pub mod utils;
 
 fn report(line: usize, whr: String, message: String) {
     eprintln!("[line {}] Error {}: {}", line, whr, message)

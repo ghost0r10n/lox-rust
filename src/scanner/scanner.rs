@@ -1,6 +1,6 @@
+use super::{token::Token, token_type::TokenType};
 use crate::loxerror;
-
-use super::{reserved_words::KEYWORDS, token::Token, token_type::TokenType};
+use crate::utils::reserved_words::KEYWORDS;
 pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
