@@ -1,56 +1,75 @@
-use super::{expression::Expression, visitor::Visitor};
-use crate::utils::literal_value::LiteralValue;
+use crate::scanner::{
+    token::Token,
+    token_type::{self, TokenType},
+};
 
-pub struct ASTprinter {}
+use super::expression::Expression;
 
-impl Visitor<String> for ASTprinter {
-    fn visit_binary_expr(
-        &self,
-        left: &super::expression::Expression,
-        operator: &crate::scanner::token::Token,
-        right: &super::expression::Expression,
-    ) -> String {
-        self.parenthesize(operator.lexame.to_owned(), &[left, right])
-    }
-
-    fn visit_grouping_expr(&self, expression: &super::expression::Expression) -> String {
-        self.parenthesize("group".to_string(), &[expression])
-    }
-
-    fn visit_unary_expr(
-        &self,
-        operator: &crate::scanner::token::Token,
-        right: &super::expression::Expression,
-    ) -> String {
-        self.parenthesize(operator.lexame.to_owned(), &[right])
-    }
-
-    fn visit_literal_expr(&self, value: &LiteralValue) -> String {
-        match value {
-            LiteralValue::String(v) => return v.to_string(),
-            LiteralValue::Float(v) => return v.to_string(),
-            LiteralValue::None => return "nil".to_string(),
-        }
-    }
+struct Parser {
+    tokens: Vec<Token>,
+    current: usize,
 }
-impl ASTprinter {
-    pub fn new() -> Self {
-        ASTprinter {}
+
+/* GRAMMAR
+ *  expression     → equality ;
+ *  equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+ *  comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+ *  term           → factor ( ( "-" | "+" ) factor )* ;
+ *  factor         → unary ( ( "/" | "*" ) unary )* ;
+ *  unary          → ( "!" | "-" ) unary | primary ;
+ *  primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+*/
+
+impl Parser {
+    fn expression(&self) -> Expression {
+        self.equality()
     }
 
-    pub fn print_tree(&self, expression: Expression) -> String {
-        return expression.accept(self);
-    }
-
-    pub fn parenthesize(&self, name: String, expressions: &[&Expression]) -> String {
-        let mut ast_string: String = String::new();
-        ast_string.push_str("(");
-        ast_string.push_str(&name);
-        for expression in expressions {
-            ast_string.push_str(" ");
-            ast_string.push_str(expression.accept(self).as_str());
+    fn equality(&self) -> Expression {
+        let mut expression: Expression = self.comparison();
+        while self.match_token_type(&[TokenType::BangEqual, TokenType::EqualEqual]) {
+            let operator: Token = self.previous();
+            let right: Expression = self.comparison();
+            expression = Expression::Binary {
+                left: expression,
+                operator,
+                right,
+            }
         }
-        ast_string.push_str(")");
-        return ast_string;
+        return expression;
+    }
+    fn match_token_type(&mut self, types: &[TokenType]) -> bool {
+        for _type in types {
+            if self.check(_type.to_owned()) {
+                self.advance();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    fn check(&mut self, _type: TokenType) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+        return self.peek().token_type == _type;
+    }
+    fn advance(&mut self) -> Token {
+        if !self.is_at_end() {
+            self.current += 1;
+        }
+        return self.previous();
+    }
+    fn is_at_end(&mut self) -> bool {
+        return match self.peek().token_type {
+            TokenType::Eof => true,
+            _ => false,
+        };
+    }
+    fn peek(&mut self) -> Token {
+        return self.tokens[self.current];
+    }
+    fn previous(&mut self) -> Token {
+        return self.tokens[self.current - 1];
     }
 }

@@ -2,7 +2,7 @@ use core::fmt;
 
 use super::token_type::TokenType;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexame: String,
