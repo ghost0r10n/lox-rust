@@ -1,22 +1,19 @@
 use core::fmt;
 
+use crate::utils::literal_value::LiteralValue;
+
 use super::token_type::TokenType;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexame: String,
     pub line: usize,
-    pub literal: Option<String>,
+    pub literal: LiteralValue,
 }
 
 impl Token {
-    pub fn new(
-        token_type: TokenType,
-        lexame: String,
-        line: usize,
-        literal: Option<String>,
-    ) -> Self {
+    pub fn new(token_type: TokenType, lexame: String, line: usize, literal: LiteralValue) -> Self {
         Self {
             token_type,
             lexame,

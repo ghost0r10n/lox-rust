@@ -30,7 +30,9 @@ impl Visitor<()> for ExpressionVisitor {
         match value {
             LiteralValue::Float(_v) => println!("float literal"),
             LiteralValue::String(_v) => println!("string literal"),
-            LiteralValue::None => println!("nil"),
+            LiteralValue::Boolean(_v) => println!("boolean literal"),
+            LiteralValue::Nil => println!("nil"),
+            LiteralValue::None => println!("none"),
         }
     }
 }

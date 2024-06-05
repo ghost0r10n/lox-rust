@@ -29,7 +29,9 @@ impl Visitor<String> for ASTprinter {
         match value {
             LiteralValue::String(v) => return v.to_string(),
             LiteralValue::Float(v) => return v.to_string(),
-            LiteralValue::None => return "nil".to_string(),
+            LiteralValue::Boolean(v) => return v.to_string(),
+            LiteralValue::Nil => return "nil".to_string(),
+            LiteralValue::None => return "".to_string(),
         }
     }
 }

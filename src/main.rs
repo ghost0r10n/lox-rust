@@ -1,6 +1,6 @@
 use core::panic;
+use parser::ast_printer::ASTprinter;
 use parser::expression::Expression;
-use parser::parser::ASTprinter;
 use scanner::scanner::Scanner;
 use scanner::token::Token;
 use scanner::token_type::TokenType;
@@ -22,6 +22,13 @@ fn loxerror(line: usize, message: String) {
     report(line, String::new(), message)
 }
 
+fn lox_parser_error(token: Token, message: String) {
+    match token.token_type {
+        TokenType::Eof => report(token.line, " at end".to_string(), message),
+        _ => report(token.line, format!("at '{}'", token.lexame), message),
+    }
+}
+
 fn run(code: String) {
     println!("{}", code);
     let mut scanner = Scanner::new(code);
@@ -34,12 +41,17 @@ fn run(code: String) {
 fn test_ast_tree() {
     let expression: Expression = Expression::Binary {
         left: Box::new(Expression::Unary {
-            operator: Token::new(TokenType::Minus, "-".to_string(), 0, Some("1".to_string())),
+            operator: Token::new(
+                TokenType::Minus,
+                "-".to_string(),
+                0,
+                LiteralValue::Float(1.0),
+            ),
             right: Box::new(Expression::Literal {
                 value: LiteralValue::Float(123.0),
             }),
         }),
-        operator: Token::new(TokenType::Star, "*".to_string(), 0, None),
+        operator: Token::new(TokenType::Star, "*".to_string(), 0, LiteralValue::None),
         right: Box::new(Expression::Grouping {
             expression: Box::new(Expression::Literal {
                 value: LiteralValue::Float(45.67),

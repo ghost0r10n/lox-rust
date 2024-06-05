@@ -1,5 +1,6 @@
 use super::{token::Token, token_type::TokenType};
 use crate::loxerror;
+use crate::utils::literal_value::LiteralValue;
 use crate::utils::reserved_words::KEYWORDS;
 pub struct Scanner {
     source: String,
@@ -33,7 +34,7 @@ impl Scanner {
             token_type: TokenType::Eof,
             lexame: String::new(),
             line: self.line,
-            literal: None,
+            literal: LiteralValue::Nil,
         });
         self.tokens.to_vec()
     }
@@ -52,7 +53,7 @@ impl Scanner {
         return current_char;
     }
 
-    fn add_token(&mut self, token_type: TokenType, literal: Option<String>) {
+    fn add_token(&mut self, token_type: TokenType, literal: LiteralValue) {
         let text: String = self.source[self.start..self.current].to_string();
         self.tokens
             .push(Token::new(token_type, text, self.line, literal))
@@ -74,16 +75,16 @@ impl Scanner {
         let character: char = self.advance();
         match character {
             //Small lexemes
-            '(' => self.add_token(TokenType::LeftParen, Option::None),
-            ')' => self.add_token(TokenType::RightParen, Option::None),
-            '{' => self.add_token(TokenType::RightBrace, Option::None),
-            '}' => self.add_token(TokenType::LeftBrace, Option::None),
-            ',' => self.add_token(TokenType::Comma, Option::None),
-            '.' => self.add_token(TokenType::Dot, Option::None),
-            '-' => self.add_token(TokenType::Minus, Option::None),
-            '+' => self.add_token(TokenType::Plus, Option::None),
-            ';' => self.add_token(TokenType::Semicolon, Option::None),
-            '*' => self.add_token(TokenType::Star, Option::None),
+            '(' => self.add_token(TokenType::LeftParen, LiteralValue::None),
+            ')' => self.add_token(TokenType::RightParen, LiteralValue::None),
+            '{' => self.add_token(TokenType::RightBrace, LiteralValue::None),
+            '}' => self.add_token(TokenType::LeftBrace, LiteralValue::None),
+            ',' => self.add_token(TokenType::Comma, LiteralValue::None),
+            '.' => self.add_token(TokenType::Dot, LiteralValue::None),
+            '-' => self.add_token(TokenType::Minus, LiteralValue::None),
+            '+' => self.add_token(TokenType::Plus, LiteralValue::None),
+            ';' => self.add_token(TokenType::Semicolon, LiteralValue::None),
+            '*' => self.add_token(TokenType::Star, LiteralValue::None),
             '=' => self.scan_equal_equal_token(),
             '!' => self.scan_bang_equal_token(),
             '<' => self.scan_less_equal_token(),
@@ -112,7 +113,7 @@ impl Scanner {
             .copied()
             .unwrap_or(TokenType::Identifier);
 
-        self.add_token(token_type.to_owned(), None)
+        self.add_token(token_type.to_owned(), LiteralValue::None)
     }
 
     fn scan_slash_token(&mut self) {
@@ -121,7 +122,7 @@ impl Scanner {
                 self.advance();
             }
         } else {
-            self.add_token(TokenType::Slash, None);
+            self.add_token(TokenType::Slash, LiteralValue::None);
         }
     }
 
@@ -138,7 +139,10 @@ impl Scanner {
         }
         self.add_token(
             TokenType::Number,
-            Some(self.source[self.start..self.current].to_string()),
+            LiteralValue::Float(match self.source[self.start..self.current].parse() {
+                Ok(v) => v,
+                Err(_) => 0.666,
+            }),
         )
     }
 
@@ -155,31 +159,31 @@ impl Scanner {
         }
         self.advance();
         let value: String = self.source[(self.start + 1)..(self.current - 1)].to_string();
-        self.add_token(TokenType::String, Some(value))
+        self.add_token(TokenType::String, LiteralValue::String(value))
     }
 
     fn scan_equal_equal_token(&mut self) {
         match self.match_token("=".to_string()) {
-            true => self.add_token(TokenType::EqualEqual, None),
-            false => self.add_token(TokenType::Equal, None),
+            true => self.add_token(TokenType::EqualEqual, LiteralValue::None),
+            false => self.add_token(TokenType::Equal, LiteralValue::None),
         }
     }
     fn scan_less_equal_token(&mut self) {
         match self.match_token("=".to_string()) {
-            true => self.add_token(TokenType::LessEqual, None),
-            false => self.add_token(TokenType::Less, None),
+            true => self.add_token(TokenType::LessEqual, LiteralValue::None),
+            false => self.add_token(TokenType::Less, LiteralValue::None),
         }
     }
     fn scan_bang_equal_token(&mut self) {
         match self.match_token("=".to_string()) {
-            true => self.add_token(TokenType::BangEqual, None),
-            false => self.add_token(TokenType::Bang, None),
+            true => self.add_token(TokenType::BangEqual, LiteralValue::None),
+            false => self.add_token(TokenType::Bang, LiteralValue::None),
         }
     }
     fn scan_greater_equal_token(&mut self) {
         match self.match_token("=".to_string()) {
-            true => self.add_token(TokenType::GreaterEqual, None),
-            false => self.add_token(TokenType::Greater, None),
+            true => self.add_token(TokenType::GreaterEqual, LiteralValue::None),
+            false => self.add_token(TokenType::Greater, LiteralValue::None),
         }
     }
     fn peek(&self) -> char {
