@@ -44,7 +44,7 @@ impl ASTprinter {
         return expression.accept(self);
     }
 
-    pub fn parenthesize(&self, name: String, expressions: &[&Expression]) -> String {
+    fn parenthesize(&self, name: String, expressions: &[&Expression]) -> String {
         let mut ast_string: String = String::new();
         ast_string.push_str("(");
         ast_string.push_str(&name);

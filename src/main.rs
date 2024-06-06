@@ -1,6 +1,7 @@
 use core::panic;
 use parser::ast_printer::ASTprinter;
-use parser::expression::Expression;
+use parser::expression::{self, Expression};
+use parser::parser::Parser;
 use scanner::scanner::Scanner;
 use scanner::token::Token;
 use scanner::token_type::TokenType;
@@ -15,7 +16,7 @@ pub mod scanner;
 pub mod utils;
 
 fn report(line: usize, whr: String, message: String) {
-    eprintln!("[line {}] Error {}: {}", line, whr, message)
+    println!("[line {}] Error {}: {}", line, whr, message)
 }
 
 fn loxerror(line: usize, message: String) {
@@ -24,7 +25,7 @@ fn loxerror(line: usize, message: String) {
 
 fn lox_parser_error(token: Token, message: String) {
     match token.token_type {
-        TokenType::Eof => report(token.line, " at end".to_string(), message),
+        TokenType::Eof => report(token.line, "at end".to_string(), message),
         _ => report(token.line, format!("at '{}'", token.lexame), message),
     }
 }
@@ -33,8 +34,15 @@ fn run(code: String) {
     println!("{}", code);
     let mut scanner = Scanner::new(code);
     let tokens: Vec<Token> = scanner.scan_tokens();
-    for token in tokens {
-        println!("{}", token);
+    let mut parser: Parser = Parser::new(tokens);
+    match parser.parse() {
+        Some(expression) => {
+            let ast = ASTprinter::new();
+            ast.print_tree(expression);
+        }
+        None => {
+            println!("There was an error while parsing")
+        }
     }
 }
 

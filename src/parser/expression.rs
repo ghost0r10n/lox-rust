@@ -2,6 +2,7 @@ use super::visitor::Visitor;
 use crate::scanner::token::Token;
 use crate::utils::literal_value::LiteralValue;
 
+#[derive(Clone)]
 pub enum Expression {
     Unary {
         operator: Token,

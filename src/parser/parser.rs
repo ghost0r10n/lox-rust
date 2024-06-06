@@ -2,13 +2,19 @@ use core::panic;
 
 use crate::{
     lox_parser_error, loxerror,
-    scanner::{token::Token, token_type::TokenType},
+    scanner::{
+        token::{self, Token},
+        token_type::TokenType,
+    },
     utils::literal_value::LiteralValue,
 };
 
-use super::expression::Expression;
+use super::{
+    expression::{self, Expression},
+    parse_error::ParsingError,
+};
 
-struct Parser {
+pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
 }
@@ -24,121 +30,209 @@ struct Parser {
 */
 
 impl Parser {
-    fn expression(&mut self) -> Expression {
+    pub fn new(tokens: Vec<Token>) -> Parser {
+        Parser { tokens, current: 0 }
+    }
+
+    pub fn parse(&mut self) -> Option<Expression> {
+        match self.expression() {
+            Ok(expression) => Some(expression),
+            Err(_) => None,
+        }
+    }
+
+    fn sync(&mut self) {
+        self.advance();
+        while !self.is_at_end() {
+            if self.previous().token_type == TokenType::Semicolon {
+                ()
+            }
+            match self.peek().token_type {
+                TokenType::Class
+                | TokenType::If
+                | TokenType::Var
+                | TokenType::For
+                | TokenType::While
+                | TokenType::Print
+                | TokenType::Return => {
+                    return;
+                }
+                _ => {
+                    let _advance = self.advance();
+                }
+            }
+        }
+    }
+
+    fn expression(&mut self) -> Result<Expression, ParsingError> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Expression {
-        let mut expression: Expression = self.comparison();
-        while self.match_token_type(&[TokenType::BangEqual, TokenType::EqualEqual]) {
-            let operator: Token = self.previous();
-            let right: Expression = self.comparison();
-            expression = Expression::Binary {
-                left: Box::new(expression),
-                operator,
-                right: Box::new(right),
+    fn equality(&mut self) -> Result<Expression, ParsingError> {
+        match self.comparison() {
+            Ok(expression) => {
+                let mut mutable_expression = expression.clone();
+                while self.match_token_type(&[TokenType::EqualEqual, TokenType::BangEqual]) {
+                    let operator: Token = self.previous();
+                    match self.comparison() {
+                        Ok(right) => {
+                            mutable_expression = Expression::Binary {
+                                left: Box::new(mutable_expression),
+                                operator,
+                                right: Box::new(right),
+                            }
+                        }
+                        Err(error) => {
+                            return Err(error);
+                        }
+                    }
+                }
+                return Ok(expression);
             }
+            Err(error) => Err(error),
         }
-        return expression;
     }
 
-    fn comparison(&mut self) -> Expression {
-        let mut expression: Expression = self.term();
-        while self.match_token_type(&[
-            TokenType::Greater,
-            TokenType::GreaterEqual,
-            TokenType::Less,
-            TokenType::LessEqual,
-        ]) {
-            let operator: Token = self.previous();
-            let right: Expression = self.term();
-            expression = Expression::Binary {
-                left: Box::new(expression),
-                operator,
-                right: Box::new(right),
+    fn comparison(&mut self) -> Result<Expression, ParsingError> {
+        match self.term() {
+            Ok(expression) => {
+                let mut mutable_expression = expression.clone();
+                while self.match_token_type(&[
+                    TokenType::Greater,
+                    TokenType::GreaterEqual,
+                    TokenType::Less,
+                    TokenType::LessEqual,
+                ]) {
+                    let operator: Token = self.previous();
+                    match self.term() {
+                        Ok(right) => {
+                            mutable_expression = Expression::Binary {
+                                left: Box::new(mutable_expression),
+                                operator,
+                                right: Box::new(right),
+                            }
+                        }
+                        Err(error) => {
+                            return Err(error);
+                        }
+                    }
+                }
+                return Ok(expression);
             }
+            Err(error) => Err(error),
         }
-        return expression;
     }
 
-    fn term(&mut self) -> Expression {
-        let mut expression: Expression = self.factor();
-        while self.match_token_type(&[TokenType::Minus, TokenType::Plus]) {
-            let operator: Token = self.previous();
-            let right: Expression = self.factor();
-            expression = Expression::Binary {
-                left: Box::new(expression),
-                operator,
-                right: Box::new(right),
+    fn term(&mut self) -> Result<Expression, ParsingError> {
+        match self.factor() {
+            Ok(expression) => {
+                let mut mutable_expression = expression.clone();
+                while self.match_token_type(&[TokenType::Minus, TokenType::Plus]) {
+                    let operator: Token = self.previous();
+                    match self.factor() {
+                        Ok(right) => {
+                            mutable_expression = Expression::Binary {
+                                left: Box::new(mutable_expression),
+                                operator,
+                                right: Box::new(right),
+                            }
+                        }
+                        Err(error) => {
+                            return Err(error);
+                        }
+                    }
+                }
+                return Ok(expression);
             }
+            Err(error) => Err(error),
         }
-        return expression;
     }
 
-    fn factor(&mut self) -> Expression {
-        let mut expression: Expression = self.unary();
-        while self.match_token_type(&[TokenType::Slash, TokenType::Star]) {
-            let operator: Token = self.previous();
-            let right: Expression = self.unary();
-            expression = Expression::Binary {
-                left: Box::new(expression),
-                operator,
-                right: Box::new(right),
-            };
+    fn factor(&mut self) -> Result<Expression, ParsingError> {
+        match self.unary() {
+            Ok(expression) => {
+                let mut mutable_expression = expression.clone();
+                while self.match_token_type(&[TokenType::Slash, TokenType::Star]) {
+                    let operator: Token = self.previous();
+                    match self.unary() {
+                        Ok(right) => {
+                            mutable_expression = Expression::Binary {
+                                left: Box::new(mutable_expression),
+                                operator,
+                                right: Box::new(right),
+                            }
+                        }
+                        Err(error) => {
+                            return Err(error);
+                        }
+                    }
+                }
+                return Ok(mutable_expression);
+            }
+            Err(error) => Err(error),
         }
-        return expression;
     }
 
-    fn unary(&mut self) -> Expression {
-        if self.match_token_type(&[TokenType::Slash, TokenType::Star]) {
-            let operator: Token = self.previous();
-            let right: Expression = self.unary();
-            return Expression::Unary {
-                operator,
-                right: Box::new(right),
-            };
+    fn unary(&mut self) -> Result<Expression, ParsingError> {
+        match self.match_token_type(&[TokenType::Slash, TokenType::Star]) {
+            true => {
+                let operator: Token = self.previous();
+                let right: Result<Expression, ParsingError> = self.unary();
+                match right {
+                    Ok(right_expression) => Ok(Expression::Unary {
+                        operator,
+                        right: Box::new(right_expression),
+                    }),
+                    Err(error) => Err(error),
+                }
+            }
+            _ => return self.primary(),
         }
-        return self.primary();
     }
 
-    fn primary(&mut self) -> Expression {
+    fn primary(&mut self) -> Result<Expression, ParsingError> {
         if self.match_token_type(&[TokenType::False]) {
-            return Expression::Literal {
+            return Ok(Expression::Literal {
                 value: LiteralValue::Boolean(false),
-            };
+            });
         }
         if self.match_token_type(&[TokenType::True]) {
-            return Expression::Literal {
+            return Ok(Expression::Literal {
                 value: LiteralValue::Boolean(true),
-            };
+            });
         }
         if self.match_token_type(&[TokenType::Nil]) {
-            return Expression::Literal {
+            return Ok(Expression::Literal {
                 value: LiteralValue::Nil,
-            };
+            });
         }
         if self.match_token_type(&[TokenType::Number, TokenType::String]) {
-            return Expression::Literal {
+            return Ok(Expression::Literal {
                 value: match self.previous().literal {
                     LiteralValue::String(v) => LiteralValue::String(v),
                     LiteralValue::Float(v) => LiteralValue::Float(v),
                     _ => LiteralValue::None,
                 },
-            };
+            });
         }
         if self.match_token_type(&[TokenType::LeftParen]) {
-            let expr = self.expression();
-            self.consume(
-                TokenType::RightParen,
-                "Expect ')' after expression.".to_string(),
-            );
-            return Expression::Grouping {
-                expression: Box::new(expr),
-            };
+            match self.expression() {
+                Ok(expr) => match self.consume(
+                    TokenType::RightParen,
+                    "Expect ')' after expression.".to_string(),
+                ) {
+                    Ok(_) => {
+                        return Ok(Expression::Grouping {
+                            expression: Box::new(expr),
+                        })
+                    }
+                    Err(error) => return Err(error),
+                },
+                Err(error) => return Err(error),
+            }
         }
-        return Expression::Literal {
-            value: LiteralValue::Nil,
-        };
+        lox_parser_error(self.peek(), "Expected expression".to_string());
+        return Err(ParsingError::new("expected expression".to_string()));
     }
 
     /*
@@ -158,10 +252,10 @@ impl Parser {
     }
 
     fn check(&mut self, _type: TokenType) -> bool {
-        if self.is_at_end() {
-            return false;
+        match self.is_at_end() {
+            true => false,
+            _ => self.peek().token_type == _type,
         }
-        return self.peek().token_type == _type;
     }
 
     fn advance(&mut self) -> Token {
@@ -186,11 +280,13 @@ impl Parser {
         return self.tokens[self.current - 1].clone();
     }
 
-    fn consume(&mut self, token_type: TokenType, message: String) -> Token {
-        if self.check(token_type) {
-            self.advance();
+    fn consume(&mut self, token_type: TokenType, message: String) -> Result<Token, ParsingError> {
+        match self.check(token_type) {
+            true => Ok(self.advance()),
+            _ => {
+                lox_parser_error(self.peek(), message.clone());
+                Err(ParsingError::new(message))
+            }
         }
-        lox_parser_error(self.peek(), message);
-        panic!("Error while parsing")
     }
 }
