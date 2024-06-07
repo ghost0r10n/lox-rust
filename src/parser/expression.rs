@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::visitor::Visitor;
 use crate::scanner::token::Token;
 use crate::utils::literal_value::LiteralValue;
@@ -19,6 +21,21 @@ pub enum Expression {
     Grouping {
         expression: Box<Expression>,
     },
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expression::Unary { operator, right } => write!(f, "Unary ({} {})", operator, right),
+            Expression::Literal { value } => write!(f, "Literal {}", value),
+            Expression::Binary {
+                left,
+                operator,
+                right,
+            } => write!(f, "Binary({} {} {})", left, operator, right),
+            Expression::Grouping { expression } => write!(f, "(group {})", expression),
+        }
+    }
 }
 
 impl Expression {

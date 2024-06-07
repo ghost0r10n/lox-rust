@@ -1,6 +1,5 @@
 use core::panic;
-use parser::ast_printer::ASTprinter;
-use parser::expression::{self, Expression};
+use interpreter::interpreter::Interpreter;
 use parser::parser::Parser;
 use scanner::scanner::Scanner;
 use scanner::token::Token;
@@ -20,6 +19,10 @@ fn report(line: usize, whr: String, message: String) {
     println!("[line {}] Error {}: {}", line, whr, message)
 }
 
+fn report_panic(line: usize, whr: String, message: String) {
+    println!("[line {}] Runtime Error {}: {}", line, whr, message)
+}
+
 fn loxerror(line: usize, message: String) {
     report(line, String::new(), message)
 }
@@ -30,50 +33,32 @@ fn lox_parser_error(token: Token, message: String) {
         _ => report(token.line, format!("at '{}'", token.lexame), message),
     }
 }
+fn lox_runtime_error(token: Token, message: String) -> LiteralValue {
+    match token.token_type {
+        TokenType::Eof => report_panic(token.line, "at end".to_string(), message),
+        _ => report_panic(token.line, format!("at '{}'", token.lexame), message),
+    }
+    return LiteralValue::None;
+}
 
-fn run(code: String) {
-    println!("{}", code);
+fn run(code: String, is_ast: bool) {
     let mut scanner = Scanner::new(code);
     let tokens: Vec<Token> = scanner.scan_tokens();
     let mut parser: Parser = Parser::new(tokens);
-    match parser.parse() {
-        Some(expression) => {
-            let ast = ASTprinter::new();
-            ast.print_tree(expression);
+    match parser.parse(is_ast) {
+        Ok(expression) => {
+            let interpreter: Interpreter = Interpreter::new();
+            interpreter.interpet(expression);
         }
-        None => {
-            println!("There was an error while parsing")
+        Err(error) => {
+            parser.sync();
+            lox_parser_error(error.token, error.message)
         }
     }
 }
 
-fn test_ast_tree() {
-    let expression: Expression = Expression::Binary {
-        left: Box::new(Expression::Unary {
-            operator: Token::new(
-                TokenType::Minus,
-                "-".to_string(),
-                0,
-                LiteralValue::Float(1.0),
-            ),
-            right: Box::new(Expression::Literal {
-                value: LiteralValue::Float(123.0),
-            }),
-        }),
-        operator: Token::new(TokenType::Star, "*".to_string(), 0, LiteralValue::None),
-        right: Box::new(Expression::Grouping {
-            expression: Box::new(Expression::Literal {
-                value: LiteralValue::Float(45.67),
-            }),
-        }),
-    };
-    let ast_printer = ASTprinter::new();
-    let result = ast_printer.print_tree(expression);
-    println!("{}", result);
-}
-
 //From source mode
-fn run_file(path: &String) -> Result {
+fn run_file(path: &String, is_ast: bool) -> Result {
     let file_result = File::open(path);
     let mut file_result: File = match file_result {
         Ok(file) => file,
@@ -82,7 +67,7 @@ fn run_file(path: &String) -> Result {
     let mut content: String = String::new();
 
     match file_result.read_to_string(&mut content) {
-        Ok(_) => Ok(run(content)),
+        Ok(_) => Ok(run(content, is_ast)),
         Err(_) => panic!("rlox:: Problem reading content of the file"),
     }
 }
@@ -98,7 +83,7 @@ fn run_prompt() -> Result {
                 if n == 1 {
                     break Ok(());
                 }
-                run(input);
+                run(input, false);
             }
             Err(_) => panic!("rlox:: Problem reading input"),
         }
@@ -109,12 +94,12 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let ast_test_key = &"ast";
-    if args.len() > 2 {
+    if args.len() > 3 {
         println!("Usage: lox [source]");
-    } else if args.len() == 2 && args[1] != ast_test_key.to_string() {
-        let _ = run_file(&args[1]);
-    } else if args.len() == 2 && args[1] == ast_test_key.to_string() {
-        test_ast_tree();
+    } else if args.len() == 2 {
+        let _ = run_file(&args[1], false);
+    } else if args.len() == 3 && args[2] == ast_test_key.to_string() {
+        let _ = run_file(&args[1], true);
     } else {
         let _ = run_prompt();
     }

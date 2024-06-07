@@ -1,18 +1,10 @@
-use core::panic;
-
 use crate::{
-    lox_parser_error, loxerror,
-    scanner::{
-        token::{self, Token},
-        token_type::TokenType,
-    },
+    lox_parser_error,
+    scanner::{token::Token, token_type::TokenType},
     utils::literal_value::LiteralValue,
 };
 
-use super::{
-    expression::{self, Expression},
-    parse_error::ParsingError,
-};
+use super::{expression::Expression, parse_error::ParsingError};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -34,14 +26,21 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Option<Expression> {
-        match self.expression() {
-            Ok(expression) => Some(expression),
-            Err(_) => None,
+    pub fn parse(&mut self, is_ast: bool) -> Result<Expression, ParsingError> {
+        let expression = self.expression();
+
+        match expression {
+            Ok(expression) => {
+                if is_ast {
+                    println!("{}", expression);
+                }
+                Ok(expression)
+            }
+            Err(error) => Err(error),
         }
     }
 
-    fn sync(&mut self) {
+    pub fn sync(&mut self) {
         self.advance();
         while !self.is_at_end() {
             if self.previous().token_type == TokenType::Semicolon {
@@ -87,7 +86,7 @@ impl Parser {
                         }
                     }
                 }
-                return Ok(expression);
+                return Ok(mutable_expression);
             }
             Err(error) => Err(error),
         }
@@ -117,7 +116,7 @@ impl Parser {
                         }
                     }
                 }
-                return Ok(expression);
+                return Ok(mutable_expression);
             }
             Err(error) => Err(error),
         }
@@ -142,7 +141,7 @@ impl Parser {
                         }
                     }
                 }
-                return Ok(expression);
+                return Ok(mutable_expression);
             }
             Err(error) => Err(error),
         }
@@ -174,7 +173,7 @@ impl Parser {
     }
 
     fn unary(&mut self) -> Result<Expression, ParsingError> {
-        match self.match_token_type(&[TokenType::Slash, TokenType::Star]) {
+        match self.match_token_type(&[TokenType::Bang, TokenType::Minus]) {
             true => {
                 let operator: Token = self.previous();
                 let right: Result<Expression, ParsingError> = self.unary();
@@ -231,8 +230,12 @@ impl Parser {
                 Err(error) => return Err(error),
             }
         }
-        lox_parser_error(self.peek(), "Expected expression".to_string());
-        return Err(ParsingError::new("expected expression".to_string()));
+        let token = self.peek();
+        lox_parser_error(token.clone(), "Expected expression".to_string());
+        return Err(ParsingError::new(
+            "expected expression".to_string(),
+            token.clone(),
+        ));
     }
 
     /*
@@ -284,8 +287,9 @@ impl Parser {
         match self.check(token_type) {
             true => Ok(self.advance()),
             _ => {
-                lox_parser_error(self.peek(), message.clone());
-                Err(ParsingError::new(message))
+                let token = self.peek();
+                lox_parser_error(token.clone(), message.clone());
+                Err(ParsingError::new(message, token.clone()))
             }
         }
     }

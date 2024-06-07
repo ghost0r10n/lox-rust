@@ -1,8 +1,9 @@
-type Result<T> = std::result::Result<T, ParsingError>;
+use crate::scanner::token::Token;
 
 #[derive(Debug, Clone)]
 pub struct ParsingError {
-    message: String,
+    pub token: Token,
+    pub message: String,
 }
 
 impl std::fmt::Display for ParsingError {
@@ -12,7 +13,7 @@ impl std::fmt::Display for ParsingError {
 }
 
 impl ParsingError {
-    pub fn new(message: String) -> Self {
-        ParsingError { message }
+    pub fn new(message: String, token: Token) -> Self {
+        ParsingError { message, token }
     }
 }
