@@ -11,6 +11,7 @@ use std::io::{prelude::*, stdin};
 use std::{env, io, usize};
 use utils::literal_value::LiteralValue;
 
+pub mod interpreter;
 pub mod parser;
 pub mod scanner;
 pub mod utils;

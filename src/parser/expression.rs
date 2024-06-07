@@ -24,14 +24,23 @@ pub enum Expression {
 impl Expression {
     pub fn accept<R>(&self, visitor: &dyn Visitor<R>) -> R {
         match self {
-            Expression::Unary { operator, right } => visitor.visit_unary_expr(operator, right),
+            Expression::Unary { operator, right } => visitor.visit(&Expression::Unary {
+                operator: operator.clone(),
+                right: right.clone(),
+            }),
             Expression::Binary {
                 left,
                 operator,
                 right,
-            } => visitor.visit_binary_expr(left, operator, right),
-            Expression::Grouping { expression } => visitor.visit_grouping_expr(expression),
-            Expression::Literal { value } => visitor.visit_literal_expr(value),
+            } => visitor.visit(&Expression::Binary {
+                left: left.clone(),
+                operator: operator.clone(),
+                right: right.clone(),
+            }),
+            Expression::Grouping { expression } => visitor.visit(&expression),
+            Expression::Literal { value } => visitor.visit(&Expression::Literal {
+                value: value.clone(),
+            }),
         }
     }
 }

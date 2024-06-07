@@ -4,34 +4,26 @@ use crate::utils::literal_value::LiteralValue;
 pub struct ASTprinter {}
 
 impl Visitor<String> for ASTprinter {
-    fn visit_binary_expr(
-        &self,
-        left: &super::expression::Expression,
-        operator: &crate::scanner::token::Token,
-        right: &super::expression::Expression,
-    ) -> String {
-        self.parenthesize(operator.lexame.to_owned(), &[left, right])
-    }
-
-    fn visit_grouping_expr(&self, expression: &super::expression::Expression) -> String {
-        self.parenthesize("group".to_string(), &[expression])
-    }
-
-    fn visit_unary_expr(
-        &self,
-        operator: &crate::scanner::token::Token,
-        right: &super::expression::Expression,
-    ) -> String {
-        self.parenthesize(operator.lexame.to_owned(), &[right])
-    }
-
-    fn visit_literal_expr(&self, value: &LiteralValue) -> String {
-        match value {
-            LiteralValue::String(v) => return v.to_string(),
-            LiteralValue::Float(v) => return v.to_string(),
-            LiteralValue::Boolean(v) => return v.to_string(),
-            LiteralValue::Nil => return "nil".to_string(),
-            LiteralValue::None => return "".to_string(),
+    fn visit(&self, expression: &Expression) -> String {
+        match expression {
+            Expression::Unary { operator, right } => {
+                self.parenthesize(operator.lexame.to_owned(), &[right])
+            }
+            Expression::Literal { value } => match value {
+                LiteralValue::String(v) => return v.to_string(),
+                LiteralValue::Float(v) => return v.to_string(),
+                LiteralValue::Boolean(v) => return v.to_string(),
+                LiteralValue::Nil => return "nil".to_string(),
+                LiteralValue::None => return "".to_string(),
+            },
+            Expression::Binary {
+                left,
+                operator,
+                right,
+            } => self.parenthesize(operator.lexame.to_owned(), &[left, right]),
+            Expression::Grouping { expression } => {
+                self.parenthesize("group".to_string(), &[expression])
+            }
         }
     }
 }
