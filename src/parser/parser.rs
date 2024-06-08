@@ -4,7 +4,11 @@ use crate::{
     utils::literal_value::LiteralValue,
 };
 
-use super::{expression::Expression, parse_error::ParsingError};
+use super::{
+    expression::{self, Expression},
+    parse_error::ParsingError,
+    statement::Statement,
+};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -26,18 +30,23 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self, is_ast: bool) -> Result<Expression, ParsingError> {
-        let expression = self.expression();
-
-        match expression {
-            Ok(expression) => {
-                if is_ast {
-                    println!("{}", expression);
+    pub fn parse(&mut self, is_ast: bool) -> Result<Vec<Statement>, ParsingError> {
+        let mut statements: Vec<Statement> = Vec::new();
+        while !self.is_at_end() {
+            match self.statement() {
+                Ok(statement) => {
+                    if is_ast {
+                        println!("{}", statement);
+                    }
+                    match self.declaration() {
+                        Ok(declaration) => statements.push(declaration),
+                        Err(_) => self.sync(),
+                    }
                 }
-                Ok(expression)
+                Err(_) => self.sync(),
             }
-            Err(error) => Err(error),
         }
+        return Ok(statements);
     }
 
     pub fn sync(&mut self) {
@@ -61,6 +70,84 @@ impl Parser {
                 }
             }
         }
+    }
+
+    fn declaration(&mut self) -> Result<Statement, ParsingError> {
+        match self.match_token_type(&[TokenType::Var]) {
+            true => self.var_declaration(),
+            false => match self.statement() {
+                Ok(r) => Ok(r),
+                Err(error) => Err(error),
+            },
+        }
+    }
+
+    fn var_declaration(&mut self) -> Result<Statement, ParsingError> {
+        return match self.consume(TokenType::Identifier, "Expected identifier".to_string()) {
+            Ok(name) => match self.match_token_type(&[TokenType::Equal]) {
+                true => {
+                    {
+                        return match self.consume(
+                            TokenType::Semicolon,
+                            "Expected ';' after variable declaration".to_string(),
+                        ) {
+                            Ok(_) => Ok(Statement::Var {
+                                name,
+                                initializer: Expression::Literal {
+                                    value: LiteralValue::Nil,
+                                },
+                            }),
+                            Err(e) => Err(e),
+                        };
+                    };
+                }
+                false => {
+                    return match self.consume(
+                        TokenType::Semicolon,
+                        "Expected ';' after variable declaration".to_string(),
+                    ) {
+                        Ok(_) => Ok(Statement::Var {
+                            name,
+                            initializer: Expression::Literal {
+                                value: LiteralValue::Nil,
+                            },
+                        }),
+                        Err(e) => Err(e),
+                    };
+                }
+            },
+            Err(error) => Err(error),
+        };
+    }
+    fn statement(&mut self) -> Result<Statement, ParsingError> {
+        match self.match_token_type(&[TokenType::Print]) {
+            true => self.print_statement(),
+            false => self.expression_statement(),
+        }
+    }
+
+    fn print_statement(&mut self) -> Result<Statement, ParsingError> {
+        return match self.expression() {
+            Ok(value) => {
+                match self.consume(TokenType::Semicolon, "Expect ; after value".to_string()) {
+                    Ok(_) => Ok(Statement::Print { expression: value }),
+                    Err(error) => Err(error),
+                }
+            }
+            Err(error) => Err(error),
+        };
+    }
+
+    fn expression_statement(&mut self) -> Result<Statement, ParsingError> {
+        return match self.expression() {
+            Ok(value) => {
+                match self.consume(TokenType::Semicolon, "Expect ; after value".to_string()) {
+                    Ok(_) => Ok(Statement::Expr { expression: value }),
+                    Err(error) => Err(error),
+                }
+            }
+            Err(error) => Err(error),
+        };
     }
 
     fn expression(&mut self) -> Result<Expression, ParsingError> {
@@ -200,6 +287,11 @@ impl Parser {
                 value: LiteralValue::Boolean(true),
             });
         }
+        if self.match_token_type(&[TokenType::Identifier]) {
+            return Ok(Expression::Variable {
+                name: self.previous(),
+            });
+        }
         if self.match_token_type(&[TokenType::Nil]) {
             return Ok(Expression::Literal {
                 value: LiteralValue::Nil,
@@ -230,6 +322,7 @@ impl Parser {
                 Err(error) => return Err(error),
             }
         }
+
         let token = self.peek();
         lox_parser_error(token.clone(), "Expected expression".to_string());
         return Err(ParsingError::new(

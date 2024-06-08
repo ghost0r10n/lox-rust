@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::visitor::Visitor;
+use super::visitor::VisitorExpression;
 use crate::scanner::token::Token;
 use crate::utils::literal_value::LiteralValue;
 
@@ -21,6 +21,9 @@ pub enum Expression {
     Grouping {
         expression: Box<Expression>,
     },
+    Variable {
+        name: Token,
+    },
 }
 
 impl fmt::Display for Expression {
@@ -34,12 +37,13 @@ impl fmt::Display for Expression {
                 right,
             } => write!(f, "Binary({} {} {})", left, operator, right),
             Expression::Grouping { expression } => write!(f, "(group {})", expression),
+            Expression::Variable { name } => write!(f, "Variable {}", name),
         }
     }
 }
 
 impl Expression {
-    pub fn accept<R>(&self, visitor: &dyn Visitor<R>) -> R {
+    pub fn accept<R>(&self, visitor: &mut dyn VisitorExpression<R>) -> R {
         match self {
             Expression::Unary { operator, right } => visitor.visit(&Expression::Unary {
                 operator: operator.clone(),
@@ -58,6 +62,9 @@ impl Expression {
             Expression::Literal { value } => visitor.visit(&Expression::Literal {
                 value: value.clone(),
             }),
+            Expression::Variable { name } => {
+                visitor.visit(&Expression::Variable { name: name.clone() })
+            }
         }
     }
 }

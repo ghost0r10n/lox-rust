@@ -1,10 +1,10 @@
-use super::{expression::Expression, visitor::Visitor};
+use super::{expression::Expression, visitor::VisitorExpression};
 use crate::utils::literal_value::LiteralValue;
 
 pub struct ASTprinter {}
 
-impl Visitor<String> for ASTprinter {
-    fn visit(&self, expression: &Expression) -> String {
+impl VisitorExpression<String> for ASTprinter {
+    fn visit(&mut self, expression: &Expression) -> String {
         match expression {
             Expression::Unary { operator, right } => {
                 self.parenthesize(operator.lexame.to_owned(), &[right])
@@ -24,6 +24,7 @@ impl Visitor<String> for ASTprinter {
             Expression::Grouping { expression } => {
                 self.parenthesize("group".to_string(), &[expression])
             }
+            Expression::Variable { name } => self.parenthesize(name.to_string(), &[expression]),
         }
     }
 }
@@ -32,11 +33,11 @@ impl ASTprinter {
         ASTprinter {}
     }
 
-    pub fn print_tree(&self, expression: Expression) -> String {
+    pub fn print_tree(&mut self, expression: Expression) -> String {
         return expression.accept(self);
     }
 
-    fn parenthesize(&self, name: String, expressions: &[&Expression]) -> String {
+    fn parenthesize(&mut self, name: String, expressions: &[&Expression]) -> String {
         let mut ast_string: String = String::new();
         ast_string.push_str("(");
         ast_string.push_str(&name);

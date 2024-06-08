@@ -1,14 +1,50 @@
+use crate::parser::statement::Statement;
 use crate::{
     lox_runtime_error,
-    parser::{expression::Expression, visitor::Visitor},
+    parser::{
+        expression::Expression,
+        visitor::{VisitorExpression, VisitorStatement},
+    },
     scanner::token_type::TokenType,
     utils::literal_value::LiteralValue,
 };
 
-pub struct Interpreter;
+use super::environment::Environment;
 
-impl Visitor<LiteralValue> for Interpreter {
-    fn visit(&self, expression: &Expression) -> LiteralValue {
+pub struct Interpreter {
+    environment: Environment,
+}
+
+impl VisitorStatement<LiteralValue> for Interpreter {
+    fn visit(&mut self, expression: &crate::parser::statement::Statement) -> LiteralValue {
+        match expression {
+            Statement::Expr { expression } => self.evaluate(Box::new(expression.clone())),
+            Statement::Print { expression } => match self.evaluate(Box::new(expression.clone())) {
+                value => {
+                    println!("{}", value);
+                    LiteralValue::None
+                }
+            },
+            Statement::Var { name, initializer } => match initializer {
+                Expression::Literal { value } => match value {
+                    LiteralValue::None => {
+                        self.environment
+                            .define(name.clone().lexame, LiteralValue::None);
+                        LiteralValue::None
+                    }
+                    _ => {
+                        self.evaluate(Box::new(initializer.clone()));
+                        self.environment.define(name.clone().lexame, value.clone());
+                        LiteralValue::None
+                    }
+                },
+                _ => LiteralValue::None,
+            },
+        }
+    }
+}
+impl VisitorExpression<LiteralValue> for Interpreter {
+    fn visit(&mut self, expression: &Expression) -> LiteralValue {
         match expression {
             Expression::Unary { operator, right } => {
                 println!("UNARY");
@@ -100,21 +136,29 @@ impl Visitor<LiteralValue> for Interpreter {
             Expression::Grouping { expression } => self.evaluate(Box::new(Expression::Grouping {
                 expression: expression.clone(),
             })),
+            Expression::Variable { name } => self.environment.get(name.clone()),
         }
     }
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        Interpreter {}
+        Interpreter {
+            environment: Environment::new(),
+        }
     }
 
-    pub fn interpet(&self, expression: Expression) {
-        let result: LiteralValue = self.evaluate(Box::new(expression));
-        println!("{}", result);
+    pub fn interpet(&mut self, statements: Vec<Statement>) {
+        for statement in statements {
+            self.execute(statement);
+        }
     }
 
-    fn evaluate(&self, expression: Box<Expression>) -> LiteralValue {
+    fn execute(&mut self, statement: Statement) -> LiteralValue {
+        return statement.accept(self);
+    }
+
+    fn evaluate(&mut self, expression: Box<Expression>) -> LiteralValue {
         return expression.accept(self);
     }
 
