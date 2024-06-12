@@ -33,23 +33,17 @@ impl Parser {
     pub fn parse(&mut self, is_ast: bool) -> Result<Vec<Statement>, ParsingError> {
         let mut statements: Vec<Statement> = Vec::new();
         while !self.is_at_end() {
-            match self.statement() {
-                Ok(statement) => {
-                    if is_ast {
-                        println!("{}", statement);
-                    }
-                    match self.declaration() {
-                        Ok(declaration) => statements.push(declaration),
-                        Err(_) => self.sync(),
-                    }
-                }
+            match self.declaration() {
+                Ok(declaration) => statements.push(declaration),
                 Err(_) => self.sync(),
             }
         }
+        println!("Finished parsing");
         return Ok(statements);
     }
 
     pub fn sync(&mut self) {
+        println!("Is syncing");
         self.advance();
         while !self.is_at_end() {
             if self.previous().token_type == TokenType::Semicolon {
@@ -74,7 +68,10 @@ impl Parser {
 
     fn declaration(&mut self) -> Result<Statement, ParsingError> {
         match self.match_token_type(&[TokenType::Var]) {
-            true => self.var_declaration(),
+            true => match self.var_declaration() {
+                Ok(r) => Ok(r),
+                Err(error) => Err(error),
+            },
             false => match self.statement() {
                 Ok(r) => Ok(r),
                 Err(error) => Err(error),
@@ -83,42 +80,31 @@ impl Parser {
     }
 
     fn var_declaration(&mut self) -> Result<Statement, ParsingError> {
-        return match self.consume(TokenType::Identifier, "Expected identifier".to_string()) {
+        match self.consume(TokenType::Identifier, "Expect variable name") {
             Ok(name) => match self.match_token_type(&[TokenType::Equal]) {
                 true => {
-                    {
-                        return match self.consume(
-                            TokenType::Semicolon,
-                            "Expected ';' after variable declaration".to_string(),
-                        ) {
-                            Ok(_) => Ok(Statement::Var {
-                                name,
-                                initializer: Expression::Literal {
-                                    value: LiteralValue::Nil,
-                                },
-                            }),
-                            Err(e) => Err(e),
-                        };
-                    };
-                }
-                false => {
-                    return match self.consume(
+                    match self.consume(
                         TokenType::Semicolon,
-                        "Expected ';' after variable declaration".to_string(),
+                        "Expected ; after variable declaration".to_string(),
                     ) {
-                        Ok(_) => Ok(Statement::Var {
-                            name,
-                            initializer: Expression::Literal {
-                                value: LiteralValue::Nil,
+                        Ok(result) => Ok(Statement::Var {
+                            name: name.clone(),
+                            initializer: match self.expression() {
+                                Ok(result) => result,
+                                Err(_) => {
+                                    lox_parser_error(self.peek(), "Expected valid expression");
+                                }
                             },
                         }),
-                        Err(e) => Err(e),
-                    };
+                        Err(error) => Err(error),
+                    }
                 }
+                false => todo!(),
             },
             Err(error) => Err(error),
-        };
+        }
     }
+
     fn statement(&mut self) -> Result<Statement, ParsingError> {
         match self.match_token_type(&[TokenType::Print]) {
             true => self.print_statement(),

@@ -51,7 +51,7 @@ fn run(code: String, is_ast: bool) {
     match parser.parse(is_ast) {
         Ok(statements) => {
             if is_ast {
-                ast.print_tree(statements)
+                //                ast.print_tree(statements);
             }
             let mut interpreter: Interpreter = Interpreter::new();
             interpreter.interpet(statements);
