@@ -21,6 +21,12 @@ pub enum Expression {
     Grouping {
         expression: Box<Expression>,
     },
+
+    Assign {
+        name: Token,
+        value: Box<Expression>,
+    },
+
     Variable {
         name: Token,
     },
@@ -38,6 +44,7 @@ impl fmt::Display for Expression {
             } => write!(f, "Binary({} {} {})", left, operator, right),
             Expression::Grouping { expression } => write!(f, "(group {})", expression),
             Expression::Variable { name } => write!(f, "Variable {}", name),
+            Expression::Assign { name, value } => write!(f, "Assign {}, {}", name, value),
         }
     }
 }
@@ -65,6 +72,10 @@ impl Expression {
             Expression::Variable { name } => {
                 visitor.visit(&Expression::Variable { name: name.clone() })
             }
+            Expression::Assign { name, value } => visitor.visit(&Expression::Assign {
+                name: name.clone(),
+                value: value.clone(),
+            }),
         }
     }
 }

@@ -1,14 +1,10 @@
 use crate::{
-    lox_parser_error,
+    lox_parser_error, loxerror,
     scanner::{token::Token, token_type::TokenType},
     utils::literal_value::LiteralValue,
 };
 
-use super::{
-    expression::{self, Expression},
-    parse_error::ParsingError,
-    statement::Statement,
-};
+use super::{expression::Expression, parse_error::ParsingError, statement::Statement};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -30,7 +26,7 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self, is_ast: bool) -> Result<Vec<Statement>, ParsingError> {
+    pub fn parse(&mut self) -> Result<Vec<Statement>, ParsingError> {
         let mut statements: Vec<Statement> = Vec::new();
         while !self.is_at_end() {
             match self.declaration() {
@@ -38,7 +34,6 @@ impl Parser {
                 Err(_) => self.sync(),
             }
         }
-        println!("Finished parsing");
         return Ok(statements);
     }
 
@@ -80,26 +75,33 @@ impl Parser {
     }
 
     fn var_declaration(&mut self) -> Result<Statement, ParsingError> {
-        match self.consume(TokenType::Identifier, "Expect variable name") {
+        match self.consume(TokenType::Identifier, "Expect variable name".to_string()) {
             Ok(name) => match self.match_token_type(&[TokenType::Equal]) {
-                true => {
-                    match self.consume(
+                true => match self.expression() {
+                    Ok(initializer) => match self.consume(
                         TokenType::Semicolon,
-                        "Expected ; after variable declaration".to_string(),
+                        "Expect ; after variable declaration".to_string(),
                     ) {
-                        Ok(result) => Ok(Statement::Var {
+                        Ok(_) => Ok(Statement::Var {
                             name: name.clone(),
-                            initializer: match self.expression() {
-                                Ok(result) => result,
-                                Err(_) => {
-                                    lox_parser_error(self.peek(), "Expected valid expression");
-                                }
-                            },
+                            initializer,
                         }),
                         Err(error) => Err(error),
-                    }
-                }
-                false => todo!(),
+                    },
+                    Err(error) => Err(error),
+                },
+                false => match self.consume(
+                    TokenType::Semicolon,
+                    "Expect ; after variable declaration".to_string(),
+                ) {
+                    Ok(_) => Ok(Statement::Var {
+                        name: name.clone(),
+                        initializer: Expression::Literal {
+                            value: LiteralValue::Nil,
+                        },
+                    }),
+                    Err(error) => Err(error),
+                },
             },
             Err(error) => Err(error),
         }
@@ -137,7 +139,33 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expression, ParsingError> {
-        self.equality()
+        self.assignment()
+    }
+    /**/
+
+    fn assignment(&mut self) -> Result<Expression, ParsingError> {
+        match self.equality() {
+            Ok(equality_expression) => match self.match_token_type(&[TokenType::Equal]) {
+                true => {
+                    let equals = self.previous();
+                    match self.assignment() {
+                        Ok(value) => match equality_expression {
+                            Expression::Variable { name } => Ok(Expression::Assign {
+                                name,
+                                value: Box::new(value),
+                            }),
+                            _ => {
+                                lox_parser_error(equals, "Invalid assignment target".to_string());
+                                Ok(equality_expression)
+                            }
+                        },
+                        Err(error) => Err(error),
+                    }
+                }
+                false => Ok(equality_expression),
+            },
+            Err(error) => Err(error),
+        }
     }
 
     fn equality(&mut self) -> Result<Expression, ParsingError> {
@@ -363,10 +391,10 @@ impl Parser {
     }
 
     fn consume(&mut self, token_type: TokenType, message: String) -> Result<Token, ParsingError> {
+        let token = self.peek();
         match self.check(token_type) {
             true => Ok(self.advance()),
             _ => {
-                let token = self.peek();
                 lox_parser_error(token.clone(), message.clone());
                 Err(ParsingError::new(message, token.clone()))
             }

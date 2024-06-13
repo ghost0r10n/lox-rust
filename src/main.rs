@@ -1,6 +1,5 @@
 use core::panic;
 use interpreter::interpreter::Interpreter;
-use parser::ast_printer::ASTprinter;
 use parser::parser::Parser;
 use scanner::scanner::Scanner;
 use scanner::token::Token;
@@ -45,14 +44,10 @@ fn lox_runtime_error(token: Token, message: String) -> LiteralValue {
 fn run(code: String, is_ast: bool) {
     let mut scanner = Scanner::new(code);
     let tokens: Vec<Token> = scanner.scan_tokens();
-    let ast: ASTprinter = ASTprinter::new();
 
     let mut parser: Parser = Parser::new(tokens);
-    match parser.parse(is_ast) {
+    match parser.parse() {
         Ok(statements) => {
-            if is_ast {
-                //                ast.print_tree(statements);
-            }
             let mut interpreter: Interpreter = Interpreter::new();
             interpreter.interpet(statements);
         }

@@ -14,6 +14,7 @@ impl Environment {
     }
 
     pub fn get(&mut self, name: Token) -> LiteralValue {
+        println!("Values: {:?}", self.values);
         match self.values.get(&name.lexame) {
             Some(value) => return value.clone(),
             None => lox_runtime_error(name.clone(), format!("Undefined variable {}", &name.lexame)),

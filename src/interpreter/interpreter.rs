@@ -9,7 +9,7 @@ use crate::{
     utils::literal_value::LiteralValue,
 };
 
-use super::environment::Environment;
+use super::environment::{self, Environment};
 
 pub struct Interpreter {
     environment: Environment,
@@ -137,6 +137,12 @@ impl VisitorExpression<LiteralValue> for Interpreter {
                 expression: expression.clone(),
             })),
             Expression::Variable { name } => self.environment.get(name.clone()),
+            Expression::Assign { name, value } => {
+                let value_evaluated = self.evaluate(value.clone());
+                self.environment
+                    .define(name.clone().lexame, value_evaluated.clone());
+                return value_evaluated.clone();
+            }
         }
     }
 }
